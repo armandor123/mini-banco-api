@@ -1,5 +1,6 @@
 package com.minibanco.minibanco.controller;
 
+import com.minibanco.minibanco.dto.TransferenciaDTO;
 import com.minibanco.minibanco.model.Conta;
 import com.minibanco.minibanco.service.ContaService;
 import org.springframework.web.bind.annotation.*;
@@ -37,5 +38,10 @@ public class ContaController {
     public Conta realizarSaque(@PathVariable Long id, @RequestBody DepositoDTO dadosSaque) {
         // Estamos a reaproveitar o DTO do depósito apenas para extrair o valor que vem no JSON
         return contaService.sacar(id, dadosSaque.getValor());
+    }
+    @PostMapping("/transferir")
+    public String realizarTransferencia(@RequestBody TransferenciaDTO dadosTransferencia) {
+        contaService.transferir(dadosTransferencia);
+        return "PIX realizado com sucesso!";
     }
 }

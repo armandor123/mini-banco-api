@@ -1,5 +1,6 @@
 package com.minibanco.minibanco.service;
 
+import com.minibanco.minibanco.dto.TransferenciaDTO;
 import com.minibanco.minibanco.dto.DepositoDTO;
 import com.minibanco.minibanco.model.Conta;
 import com.minibanco.minibanco.repository.ContaRepository;
@@ -73,5 +74,30 @@ public class ContaService {
         conta.setSaldo(novoSaldo);
 
         return contaRepository.save(conta); // Atualiza o saldo no banco
+    }
+    // Adiciona este import no topo do ficheiro se o IntelliJ não o fizer automaticamente:
+
+    @org.springframework.transaction.annotation.Transactional // CRÍTICO: Garante a atomicidade do PIX!
+    public void transferir(TransferenciaDTO dados) {
+        // 1. Validação básica de segurança
+        if (dados.getValor() == null || dados.getValor().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Erro: O valor da transferência deve ser maior que zero!");
+        }
+
+        // 2. Regra de Ouro: Não permitir transferência para a própria conta
+        if (dados.getIdContaOrigem().equals(dados.getIdContaDestino())) {
+            throw new RuntimeException("Operação Negada: Não pode transferir para si mesmo!");
+        }
+
+        // 3. Execução Atómica: Reutiliza as regras de saldo insuficiente que já criámos
+        // Se a conta de origem não tiver saldo, o método 'sacar' vai explodir uma exceção
+        // e o @Transactional vai abortar tudo antes de mexer na conta de destino!
+        this.sacar(dados.getIdContaOrigem(), dados.getValor());
+
+        // Se o saque funcionou, o dinheiro entra na conta de destino
+        DepositoDTO dadosDeposito = new DepositoDTO();
+        dadosDeposito.setValor(dados.getValor());
+        dadosDeposito.setOrigemTransacao("PIX_INTERNO");
+        this.depositar(dados.getIdContaDestino(), dadosDeposito);
     }
 }
